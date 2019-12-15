@@ -1,4 +1,4 @@
-module georgehao/log
+module github.com/georgehao/log
 
 go 1.13
 
