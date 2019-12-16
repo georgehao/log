@@ -1,8 +1,3 @@
-# log
-
-base on zap, an easy using logger module
-
-```go
 package main
 
 import "github.com/georgehao/log"
@@ -19,4 +14,3 @@ func main() {
 	log.Sync()
 	//output: {"level":"info","ts":"2019-12-16T10:37:11.364+0800","caller":"example/example.go:12","msg":"hello george log"}
 }
-```
