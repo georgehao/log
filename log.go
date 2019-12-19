@@ -5,12 +5,14 @@ import (
 )
 
 const (
-	DebugLevel   = "debug"
-	InfoLevel    = "info"
-	WarnLevel    = "warn"
-	ErrorLevel   = "error"
-	PanicLevel   = "panic"
-	RequestLevel = "request"
+	DebugLevel = "debug"
+	InfoLevel  = "info"
+	WarnLevel  = "warn"
+	ErrorLevel = "error"
+	PanicLevel = "panic"
+
+	FileTypeLog     = "log"
+	FileTypeRequest = "request_log"
 )
 
 var logger *Log
@@ -83,25 +85,7 @@ func SetCaller(caller bool) LogOption {
 // Init init logger
 func Init(path, level string, needRequestLog bool, options ...LogOption) {
 	logger = &Log{Path: path, Level: level}
-
-	var levels []string
-	switch level {
-	case DebugLevel:
-		levels = append(levels, DebugLevel, InfoLevel, WarnLevel, ErrorLevel)
-	case InfoLevel:
-		levels = append(levels, InfoLevel, WarnLevel, ErrorLevel)
-	case WarnLevel:
-		levels = append(levels, WarnLevel, ErrorLevel)
-	case ErrorLevel, PanicLevel:
-		levels = append(levels, ErrorLevel)
-	}
-
-	if needRequestLog {
-		logger.NeedRequestLog = true
-		levels = append(levels, RequestLevel)
-	}
-
-	logger.createFiles(levels, options...)
+	logger.createFiles(level, needRequestLog, options...)
 }
 
 // Sync flushes buffer, if any
@@ -143,22 +127,10 @@ func (l *Log) maxAge(level string) int {
 	return 0
 }
 
-func (l *Log) createFiles(levels []string, options ...LogOption) {
-	adapters := make(map[string]*zapAdapter, 4)
-	for _, v := range levels {
-		switch {
-		case v == DebugLevel:
-			adapters[DebugLevel] = NewZapAdapter(fmt.Sprintf("%s.DEBUG", l.Path), DebugLevel)
-		case v == InfoLevel:
-			adapters[InfoLevel] = NewZapAdapter(fmt.Sprintf("%s.INFO", l.Path), InfoLevel)
-		case v == WarnLevel:
-			adapters[WarnLevel] = NewZapAdapter(fmt.Sprintf("%s.WARN", l.Path), WarnLevel)
-		case v == ErrorLevel:
-			adapters[ErrorLevel] = NewZapAdapter(fmt.Sprintf("%s.ERROR", l.Path), ErrorLevel)
-		case v == RequestLevel:
-			adapters[RequestLevel] = NewZapAdapter(fmt.Sprintf("%s.Request", l.Path), InfoLevel)
-		}
-	}
+func (l *Log) createFiles(level string, needRequestLog bool, options ...LogOption) {
+	adapters := make(map[string]*zapAdapter, 2)
+	adapters[FileTypeLog] = NewZapAdapter(fmt.Sprintf("%s", l.Path), level)
+	adapters[FileTypeRequest] = NewZapAdapter(fmt.Sprintf("%s.Request", l.Path), InfoLevel)
 	l.adapters = adapters
 
 	for _, opt := range options {
@@ -177,7 +149,7 @@ func Debug(args ...interface{}) {
 		return
 	}
 
-	if debugAdapter, ok := logger.adapters[DebugLevel]; ok {
+	if debugAdapter, ok := logger.adapters[FileTypeLog]; ok {
 		debugAdapter.Debug(args...)
 	}
 }
@@ -188,7 +160,7 @@ func Debugf(template string, args ...interface{}) {
 		return
 	}
 
-	if debugAdapter, ok := logger.adapters[DebugLevel]; ok {
+	if debugAdapter, ok := logger.adapters[FileTypeLog]; ok {
 		debugAdapter.Debugf(template, args...)
 	}
 }
@@ -199,7 +171,7 @@ func Debugw(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if debugAdapter, ok := logger.adapters[DebugLevel]; ok {
+	if debugAdapter, ok := logger.adapters[FileTypeLog]; ok {
 		debugAdapter.Debugw(msg, keysAndValues...)
 	}
 }
@@ -209,7 +181,7 @@ func Info(args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[InfoLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Info(args...)
 	}
 }
@@ -219,7 +191,7 @@ func Infof(template string, args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[InfoLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Infof(template, args...)
 	}
 }
@@ -229,7 +201,7 @@ func Infow(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[InfoLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Infow(msg, keysAndValues...)
 	}
 }
@@ -239,7 +211,7 @@ func Warn(args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[WarnLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Warn(args...)
 	}
 }
@@ -249,7 +221,7 @@ func Warnf(template string, args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[WarnLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Warnf(template, args...)
 	}
 }
@@ -259,7 +231,7 @@ func Warnw(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[WarnLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Warnw(msg, keysAndValues...)
 	}
 }
@@ -269,7 +241,7 @@ func Error(args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Error(args...)
 	}
 }
@@ -279,7 +251,7 @@ func Errorf(template string, args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Errorf(template, args...)
 	}
 }
@@ -289,7 +261,7 @@ func Errorw(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Errorw(msg, keysAndValues...)
 	}
 }
@@ -299,7 +271,7 @@ func Panic(args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Panic(args...)
 	}
 }
@@ -309,7 +281,7 @@ func Panicf(template string, args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Panicf(template, args...)
 	}
 }
@@ -319,7 +291,7 @@ func Panicw(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Panicw(msg, keysAndValues...)
 	}
 }
@@ -329,7 +301,7 @@ func Fatal(args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Fatal(args...)
 	}
 }
@@ -339,7 +311,7 @@ func Fatalf(template string, args ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Fatalf(template, args...)
 	}
 }
@@ -349,7 +321,7 @@ func Fatalw(msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[ErrorLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeLog]; ok {
 		adapter.Fatalw(msg, keysAndValues...)
 	}
 }
@@ -359,7 +331,7 @@ func RequestLogInfow(keysAndValues ...interface{}) {
 		return
 	}
 
-	if adapter, ok := logger.adapters[RequestLevel]; ok {
+	if adapter, ok := logger.adapters[FileTypeRequest]; ok {
 		adapter.Infow("", keysAndValues...)
 	}
 }
