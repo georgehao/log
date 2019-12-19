@@ -85,6 +85,7 @@ func SetCaller(caller bool) LogOption {
 // Init init logger
 func Init(path, level string, needRequestLog bool, options ...LogOption) {
 	logger = &Log{Path: path, Level: level}
+	logger.NeedRequestLog = needRequestLog
 	logger.createFiles(level, needRequestLog, options...)
 }
 
